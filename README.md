@@ -4,6 +4,7 @@ A real-time cryptocurrency price monitoring dashboard built with Streamlit. Conn
 
 ## Features
 
+### 📊 Price Monitor
 - 🔴 **LIVE Data from Binance API** - Real-time cryptocurrency prices
 - 💾 **MongoDB Integration** - Save and retrieve historical data
 - 📊 **Interactive Candlestick Charts** with Plotly
@@ -14,8 +15,26 @@ A real-time cryptocurrency price monitoring dashboard built with Streamlit. Conn
   - Buy Signal: When close price touches or goes below the lower Bollinger Band
   - Sell Signal: When close price touches or goes above the upper Bollinger Band
 - 🔄 **Auto-refresh** capability for live updates
-- 🎨 Clean and responsive UI
 - 🛠️ **Flexible Data Sources**: Choose between Binance API (live) or MongoDB (saved data)
+
+### 🎯 Trading Simulator (NEW!)
+- 💰 **Paper Trading** - Practice trading without real money
+- 📝 **Multiple Order Types**:
+  - Market Orders (instant execution)
+  - Limit Orders (execute at specific price)
+  - Stop Loss (automatic sell to limit losses)
+  - Take Profit (automatic sell to secure profits)
+- 📊 **Portfolio Management**:
+  - Track balance and positions
+  - Real-time P&L calculation
+  - Win rate and statistics
+- 📈 **Performance Dashboard**:
+  - Total P&L (profit & loss)
+  - Win/loss ratio
+  - Best/worst trades
+  - Trade history with charts
+- 💾 **MongoDB Persistence** - Your simulator state is saved automatically
+- 🎓 **Risk-Free Learning** - Perfect for testing strategies!
 
 ## Prerequisites
 
@@ -98,15 +117,43 @@ streamlit run main.py
 
 The application will open in your default browser at `http://localhost:8501`.
 
-### Using the Dashboard
+### Using the Price Monitor
 
-1. **Enter Crypto Symbol**: Input the cryptocurrency trading pair (e.g., BTCUSDT, ETHUSDT, BNBUSDT)
-2. **Select Interval**: Choose the timeframe for candlestick data (1m, 5m, 15m, 1h, 1d)
-3. **Choose Data Source**:
+1. **Select Page**: In the sidebar, choose "📊 Monitor de Preços"
+2. **Enter Crypto Symbol**: Input the cryptocurrency trading pair (e.g., BTCUSDT, ETHUSDT, BNBUSDT)
+3. **Select Interval**: Choose the timeframe for candlestick data (1m, 5m, 15m, 1h, 1d)
+4. **Choose Data Source**:
    - **Binance API (Live)**: Fetches real-time data directly from Binance (recommended)
    - **MongoDB (Saved Data)**: Uses historical data saved in your MongoDB
-4. **Get Data**: Click the button to fetch and display data
-5. **Auto-refresh**: Enable the checkbox to automatically update the dashboard every 60 seconds
+5. **Get Data**: Click the button to fetch and display data
+6. **Auto-refresh**: Enable the checkbox to automatically update the dashboard every 60 seconds
+
+### Using the Trading Simulator
+
+1. **Select Page**: In the sidebar, choose "🎯 Trading Simulator"
+2. **Dashboard Tab**: View your portfolio, open positions, pending orders, and statistics
+3. **New Order Tab**: Create trading orders
+   - Enter symbol (e.g., BTCUSDT)
+   - Choose order type (Market, Limit, Stop Loss, Take Profit)
+   - Select side (BUY or SELL)
+   - Enter quantity
+   - Set price (for limit/stop orders)
+   - Click "Send Order"
+4. **History Tab**: Review all executed trades and orders
+5. **Update Prices**: Click "🔄 Atualizar Preço" to fetch latest prices and process pending orders
+6. **Save Progress**: Your simulator state is automatically saved to MongoDB
+
+**Trading Simulator Workflow Example:**
+```
+1. Start with $10,000 USDT balance
+2. Update BTC price → $43,500
+3. Create Market BUY order → 0.1 BTC
+4. Position opens: 0.1 BTC @ $43,500
+5. Set Stop Loss @ $42,000 (limit losses)
+6. Set Take Profit @ $45,000 (secure profits)
+7. Price updates trigger automatic execution
+8. View P&L and statistics in Dashboard
+```
 
 ### Data Sources Explained
 
@@ -131,7 +178,9 @@ The application will open in your default browser at `http://localhost:8501`.
 
 ```
 binance/
-├── main.py                    # Main Streamlit application
+├── main.py                    # Main Streamlit application with navigation
+├── pages_trading.py           # Trading Simulator UI (NEW!)
+├── trading_simulator.py       # Trading logic and order management (NEW!)
 ├── binance_api.py             # Binance API client and indicators calculation
 ├── collect_data.py            # Data collection script (run in background)
 ├── check_mongodb.py           # MongoDB diagnostic tool
@@ -145,7 +194,13 @@ binance/
 ### Core Files
 
 **main.py**
-Main Streamlit dashboard application with UI and charting.
+Main Streamlit application with multi-page navigation. Hosts both Price Monitor and Trading Simulator.
+
+**pages_trading.py** (NEW!)
+Trading Simulator UI with tabs for Dashboard, New Orders, and History. Handles user interactions and displays portfolio state.
+
+**trading_simulator.py** (NEW!)
+Core trading engine with order management, portfolio tracking, P&L calculation, and statistics. Supports Market, Limit, Stop Loss, and Take Profit orders.
 
 **binance_api.py**
 Module for connecting to Binance API, fetching klines (candlestick data), and calculating technical indicators (Bollinger Bands, MA20).
