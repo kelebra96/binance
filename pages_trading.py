@@ -94,7 +94,7 @@ def render_trading_page(mongodb_collection):
         st.session_state.simulator = TradingSimulator(initial_balance=simulator.initial_balance)
         save_simulator_to_mongodb(st.session_state.simulator, mongodb_collection)
         st.sidebar.success("✅ Simulador resetado!")
-        st.rerun()
+        # Não precisa de rerun, a página vai atualizar naturalmente
 
     # Layout principal: 3 tabs
     tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Nova Ordem", "📜 Histórico"])
@@ -221,7 +221,8 @@ def render_dashboard(simulator: TradingSimulator, current_prices: dict):
                 order_id = int(order_to_cancel.split('#')[1].split(' ')[0])
                 if simulator.cancel_order(order_id):
                     st.success(f"Ordem #{order_id} cancelada!")
-                    st.rerun()
+                    # Salvar e aguardar próximo refresh natural
+                    save_simulator_to_mongodb(simulator, mongodb_collection)
                 else:
                     st.error("Erro ao cancelar ordem")
     else:
@@ -344,7 +345,7 @@ def render_order_form(simulator: TradingSimulator, mongodb_collection, current_p
             else:
                 st.error(f"❌ Ordem cancelada: {order.get('cancel_reason', 'Erro desconhecido')}")
 
-            st.rerun()
+            # A interface irá atualizar quando o usuário mudar de tab ou clicar em outro botão
 
         except Exception as e:
             st.error(f"❌ Erro ao criar ordem: {str(e)}")
