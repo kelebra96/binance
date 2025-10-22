@@ -7,6 +7,7 @@ import plotly.graph_objs as go
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from dotenv import load_dotenv
+from binance_api import get_binance_data_with_indicators, save_to_mongodb
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -267,6 +268,16 @@ interval = st.sidebar.selectbox(
     index=0,
 )
 
+# Seleção da fonte de dados
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Data Source")
+data_source = st.sidebar.radio(
+    "Select data source:",
+    options=["Binance API (Live)", "MongoDB (Saved Data)"],
+    index=0,
+    help="Binance API: busca dados em tempo real da Binance\nMongoDB: usa dados salvos localmente"
+)
+
 # Configuração de auto-refresh
 st.sidebar.markdown("---")
 st_autorefresh = st.sidebar.checkbox("Auto-refresh", value=False)
@@ -279,44 +290,88 @@ get_data_button = st.sidebar.button("Get Data")
 # Instruções
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Instructions")
-st.sidebar.write("1. Enter the crypto symbol in the input box")
+st.sidebar.write("1. Enter the crypto symbol (e.g., BTCUSDT, ETHUSDT)")
 st.sidebar.write("2. Select the interval for the candlestick chart")
-st.sidebar.write("3. Click on 'Get Data' to fetch the latest data")
-st.sidebar.write("4. Check 'Auto-refresh' for live updates")
+st.sidebar.write("3. Choose data source (Binance API or MongoDB)")
+st.sidebar.write("4. Click 'Get Data' to fetch data")
+st.sidebar.write("5. Enable 'Auto-refresh' for live updates")
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Tips")
+st.sidebar.info("💡 Use **Binance API** for real-time data\n\n💾 Use **MongoDB** for saved historical data")
 
 # Lógica principal
 if get_data_button or st_autorefresh:
     try:
-        # Conectar ao MongoDB
-        with st.spinner("Connecting to MongoDB..."):
-            client = get_mongodb_client()
-            db = client[MONGODB_DATABASE]
-            collection = db[MONGODB_COLLECTION]
+        candle_data = None
 
-        # Buscar dados do MongoDB
-        with st.spinner("Fetching data from MongoDB..."):
-            candle_data = fetch_data_from_mongodb(collection, limit=DATA_LIMIT)
+        # Escolher fonte de dados
+        if data_source == "Binance API (Live)":
+            # Buscar dados diretamente da API da Binance
+            with st.spinner(f"Fetching live data from Binance... ({crypto_symbol} {interval})"):
+                candle_data = get_binance_data_with_indicators(
+                    symbol=crypto_symbol,
+                    interval=interval,
+                    limit=DATA_LIMIT
+                )
 
-        # Verificar se há dados
-        if candle_data.empty:
-            st.warning("⚠️ Nenhum dado disponível no MongoDB")
-            st.info("💡 **Soluções possíveis:**")
-            st.markdown("""
-            1. **Verificar o MongoDB:**
-            ```bash
-            python check_mongodb.py
-            ```
+            if candle_data is None or candle_data.empty:
+                st.error("❌ Falha ao buscar dados da Binance")
+                st.info("💡 **Possíveis causas:**")
+                st.markdown("""
+                1. **Símbolo inválido**: Verifique se o símbolo está correto (ex: BTCUSDT, ETHUSDT)
+                2. **Sem conexão com internet**: Verifique sua conexão
+                3. **API da Binance indisponível**: Tente novamente em alguns segundos
+                """)
+            else:
+                st.success(f"✅ Dados obtidos da Binance em tempo real! ({len(candle_data)} candles)")
 
-            2. **Popular com dados de exemplo:**
-            ```bash
-            python populate_sample_data.py
-            ```
+                # Salvar no MongoDB para histórico (opcional)
+                try:
+                    client = get_mongodb_client()
+                    db = client[MONGODB_DATABASE]
+                    collection = db[MONGODB_COLLECTION]
+                    save_to_mongodb(candle_data, collection)
+                    logger.info("Dados salvos no MongoDB para histórico")
+                    client.close()
+                except Exception as e:
+                    logger.warning(f"Não foi possível salvar no MongoDB: {e}")
+                    # Continua mesmo se não conseguir salvar
 
-            3. **Verificar se o MongoDB está rodando:**
-            - Windows: Abra o Gerenciador de Tarefas e procure por "MongoDB"
-            - Linux/Mac: `sudo systemctl status mongod`
-            """)
-        else:
+        else:  # MongoDB (Saved Data)
+            # Conectar ao MongoDB
+            with st.spinner("Connecting to MongoDB..."):
+                client = get_mongodb_client()
+                db = client[MONGODB_DATABASE]
+                collection = db[MONGODB_COLLECTION]
+
+            # Buscar dados do MongoDB
+            with st.spinner("Fetching data from MongoDB..."):
+                candle_data = fetch_data_from_mongodb(collection, limit=DATA_LIMIT)
+
+            client.close()
+
+            # Verificar se há dados
+            if candle_data.empty:
+                st.warning("⚠️ Nenhum dado disponível no MongoDB")
+                st.info("💡 **Soluções possíveis:**")
+                st.markdown("""
+                1. **Usar Binance API (Live)** para buscar dados em tempo real
+
+                2. **Popular com dados de exemplo:**
+                ```bash
+                python populate_sample_data.py
+                ```
+
+                3. **Coletar dados da Binance:**
+                ```bash
+                python collect_data.py --symbol BTCUSDT --interval 1m --once
+                ```
+                """)
+            else:
+                st.success(f"✅ Dados carregados do MongoDB ({len(candle_data)} candles)")
+
+        # Se temos dados válidos, processar e exibir
+        if candle_data is not None and not candle_data.empty:
             # Identificar sinais de compra/venda
             candle_data_with_signals = identify_trade_signals(candle_data)
 
@@ -365,13 +420,13 @@ if get_data_button or st_autorefresh:
 
             logger.info(f"Dashboard atualizado com sucesso para {crypto_symbol}")
 
-        # Fechar conexão com MongoDB
-        client.close()
-
     except Exception as e:
         logger.error(f"Erro na aplicação: {e}")
-        st.error(f"An error occurred: {str(e)}")
-        st.error("Please check your MongoDB connection and ensure the database is running.")
+        st.error(f"❌ An error occurred: {str(e)}")
+        if data_source == "MongoDB (Saved Data)":
+            st.info("💡 Tente usar **Binance API (Live)** como fonte de dados")
+        else:
+            st.info("💡 Verifique sua conexão com a internet e o símbolo da criptomoeda")
 
 # Auto-refresh com intervalo correto
 if st_autorefresh:

@@ -1,38 +1,27 @@
 # Crypto Monitor with Bollinger Bands and Moving Average
 
-A real-time cryptocurrency price monitoring dashboard built with Streamlit. Features candlestick charts with technical indicators (Bollinger Bands and 20-period Moving Average) and automated buy/sell signal detection.
+A real-time cryptocurrency price monitoring dashboard built with Streamlit. Connects directly to **Binance API** to fetch live market data, calculates technical indicators (Bollinger Bands and 20-period Moving Average), and provides automated buy/sell signal detection.
 
 ## Features
 
-- Real-time cryptocurrency price monitoring
-- Interactive candlestick charts with Plotly
-- Technical indicators:
+- 🔴 **LIVE Data from Binance API** - Real-time cryptocurrency prices
+- 💾 **MongoDB Integration** - Save and retrieve historical data
+- 📊 **Interactive Candlestick Charts** with Plotly
+- 📈 **Technical Indicators**:
   - Bollinger Bands (Upper and Lower)
   - 20-period Moving Average (MA20)
-- Automated buy/sell signal detection
-- Buy Signal: When close price touches or goes below the lower Bollinger Band
-- Sell Signal: When close price touches or goes above the upper Bollinger Band
-- Auto-refresh capability for live updates
-- Clean and responsive UI
+- 🎯 **Automated Trading Signals**:
+  - Buy Signal: When close price touches or goes below the lower Bollinger Band
+  - Sell Signal: When close price touches or goes above the upper Bollinger Band
+- 🔄 **Auto-refresh** capability for live updates
+- 🎨 Clean and responsive UI
+- 🛠️ **Flexible Data Sources**: Choose between Binance API (live) or MongoDB (saved data)
 
 ## Prerequisites
 
 - Python 3.8+
-- MongoDB server running locally or remotely
-- Data pre-populated in MongoDB with the following schema:
-
-```json
-{
-  "open_time": "2024-01-01 00:00:00",
-  "open": 42000.00,
-  "high": 42500.00,
-  "low": 41800.00,
-  "close": 42300.00,
-  "Upper": 43000.00,
-  "Lower": 41500.00,
-  "MA20": 42200.00
-}
-```
+- Internet connection (for Binance API)
+- MongoDB server (optional - only needed if you want to save historical data)
 
 ## Installation
 
@@ -111,10 +100,27 @@ The application will open in your default browser at `http://localhost:8501`.
 
 ### Using the Dashboard
 
-1. **Enter Crypto Symbol**: Input the cryptocurrency trading pair (e.g., BTCUSDT, ETHUSDT)
+1. **Enter Crypto Symbol**: Input the cryptocurrency trading pair (e.g., BTCUSDT, ETHUSDT, BNBUSDT)
 2. **Select Interval**: Choose the timeframe for candlestick data (1m, 5m, 15m, 1h, 1d)
-3. **Get Data**: Click the button to fetch and display data
-4. **Auto-refresh**: Enable the checkbox to automatically update the dashboard every 60 seconds
+3. **Choose Data Source**:
+   - **Binance API (Live)**: Fetches real-time data directly from Binance (recommended)
+   - **MongoDB (Saved Data)**: Uses historical data saved in your MongoDB
+4. **Get Data**: Click the button to fetch and display data
+5. **Auto-refresh**: Enable the checkbox to automatically update the dashboard every 60 seconds
+
+### Data Sources Explained
+
+**🔴 Binance API (Live)** - Recommended
+- Fetches real-time market data from Binance
+- Always up-to-date
+- No MongoDB required (but data is auto-saved to MongoDB if available)
+- Requires internet connection
+
+**💾 MongoDB (Saved Data)**
+- Uses historical data from your local MongoDB
+- Useful for backtesting or offline analysis
+- Requires MongoDB running with data
+- Use `collect_data.py` to populate MongoDB continuously
 
 ### Interpreting Signals
 
@@ -126,6 +132,8 @@ The application will open in your default browser at `http://localhost:8501`.
 ```
 binance/
 ├── main.py                    # Main Streamlit application
+├── binance_api.py             # Binance API client and indicators calculation
+├── collect_data.py            # Data collection script (run in background)
 ├── check_mongodb.py           # MongoDB diagnostic tool
 ├── populate_sample_data.py    # Script to insert sample data
 ├── requirements.txt           # Python dependencies
@@ -134,6 +142,17 @@ binance/
 └── README.md                 # This file
 ```
 
+### Core Files
+
+**main.py**
+Main Streamlit dashboard application with UI and charting.
+
+**binance_api.py**
+Module for connecting to Binance API, fetching klines (candlestick data), and calculating technical indicators (Bollinger Bands, MA20).
+
+**collect_data.py**
+Background script for continuously collecting data from Binance and saving to MongoDB. Useful for building historical datasets.
+
 ### Helper Scripts
 
 **check_mongodb.py**
@@ -141,6 +160,48 @@ Diagnostic tool that checks your MongoDB connection and data structure. Use this
 
 **populate_sample_data.py**
 Generates and inserts 100 sample candlestick records with Bollinger Bands and Moving Average. Perfect for testing the application.
+
+## Advanced Usage
+
+### Collecting Data Continuously
+
+To build a historical dataset, run the `collect_data.py` script in the background:
+
+```bash
+# Collect BTCUSDT 1-minute candles, update every 60 seconds
+python collect_data.py --symbol BTCUSDT --interval 1m --update-interval 60
+
+# Collect ETHUSDT 5-minute candles
+python collect_data.py --symbol ETHUSDT --interval 5m
+
+# Run once (no loop)
+python collect_data.py --symbol BTCUSDT --interval 1m --once
+```
+
+**Options:**
+- `--symbol`: Cryptocurrency symbol (default: BTCUSDT)
+- `--interval`: Candle interval (1m, 5m, 15m, 1h, 1d)
+- `--limit`: Number of candles to fetch (default: 100, max: 1000)
+- `--update-interval`: Seconds between updates (default: 60)
+- `--once`: Run once and exit (no continuous loop)
+
+**Example: Run in background**
+```bash
+# Windows
+start /B python collect_data.py
+
+# Linux/Mac
+nohup python collect_data.py &
+```
+
+The script will:
+1. Connect to Binance API
+2. Fetch candlestick data
+3. Calculate Bollinger Bands and MA20
+4. Save to MongoDB
+5. Repeat every N seconds
+
+Logs are saved to `collect_data.log`.
 
 ## Configuration
 
@@ -256,10 +317,12 @@ If you see "Dados incompletos no MongoDB" or "Colunas ausentes":
 ## Dependencies
 
 - **streamlit** (>=1.28.0): Web application framework
-- **pandas** (>=2.0.0): Data manipulation
-- **plotly** (>=5.17.0): Interactive charts
+- **pandas** (>=2.0.0): Data manipulation and DataFrames
+- **plotly** (>=5.17.0): Interactive charts and candlestick visualization
 - **pymongo** (>=4.5.0): MongoDB driver
 - **python-dotenv** (>=1.0.0): Environment variable management
+- **requests** (>=2.31.0): HTTP client for Binance API
+- **numpy** (>=1.24.0): Numerical computing for indicators calculation
 
 ## Development
 
