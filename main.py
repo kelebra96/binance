@@ -7,6 +7,7 @@ import plotly.graph_objs as go
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from dotenv import load_dotenv
+from streamlit_autorefresh import st_autorefresh
 from binance_api import get_binance_data_with_indicators, save_to_mongodb
 from pages_trading import render_trading_page
 
@@ -305,12 +306,20 @@ elif page == "📊 Monitor de Preços":
 
     # Configuração de auto-refresh
     st.sidebar.markdown("---")
-    st_autorefresh = st.sidebar.checkbox("Auto-refresh", value=False)
-    if st_autorefresh:
-        st.sidebar.info(f"Auto-refreshing every {AUTO_REFRESH_INTERVAL} seconds")
+    enable_autorefresh = st.sidebar.checkbox("🔄 Auto-refresh", value=False)
+
+    # Implementar auto-refresh usando streamlit-autorefresh
+    refresh_interval = AUTO_REFRESH_INTERVAL * 1000  # Converter para milissegundos
+    if enable_autorefresh:
+        st.sidebar.success(f"✅ Auto-refresh ativo: {AUTO_REFRESH_INTERVAL}s")
+        # Chama st_autorefresh que atualiza a página automaticamente
+        count = st_autorefresh(interval=refresh_interval, key="datarefresh")
+        st.sidebar.caption(f"Última atualização: refresh #{count}")
+    else:
+        st.sidebar.info("ℹ️ Auto-refresh desativado")
 
     # Botão para buscar dados
-    get_data_button = st.sidebar.button("Get Data")
+    get_data_button = st.sidebar.button("📊 Get Data")
 
     # Instruções
     st.sidebar.markdown("---")
@@ -324,8 +333,8 @@ elif page == "📊 Monitor de Preços":
     st.sidebar.markdown("### Tips")
     st.sidebar.info("💡 Use **Binance API** for real-time data\n\n💾 Use **MongoDB** for saved historical data")
 
-    # Lógica principal
-    if get_data_button or st_autorefresh:
+    # Lógica principal - buscar dados quando clicar no botão OU quando auto-refresh estiver ativo
+    if get_data_button or enable_autorefresh:
         try:
             candle_data = None
 
@@ -452,9 +461,3 @@ elif page == "📊 Monitor de Preços":
                 st.info("💡 Tente usar **Binance API (Live)** como fonte de dados")
             else:
                 st.info("💡 Verifique sua conexão com a internet e o símbolo da criptomoeda")
-
-    # Auto-refresh desabilitado para evitar NotFoundError
-    # Se precisar de auto-refresh, use a extensão streamlit-autorefresh
-    # ou clique manualmente em "Get Data" para atualizar
-    if st_autorefresh:
-        st.info("💡 Auto-refresh requer recarregar a página manualmente. Clique em 'Get Data' para atualizar.")
