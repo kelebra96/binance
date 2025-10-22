@@ -453,7 +453,8 @@ elif page == "📊 Monitor de Preços":
             else:
                 st.info("💡 Verifique sua conexão com a internet e o símbolo da criptomoeda")
 
-    # Auto-refresh com intervalo correto
+    # Auto-refresh desabilitado para evitar NotFoundError
+    # Se precisar de auto-refresh, use a extensão streamlit-autorefresh
+    # ou clique manualmente em "Get Data" para atualizar
     if st_autorefresh:
-        time.sleep(AUTO_REFRESH_INTERVAL)
-        st.rerun()
+        st.info("💡 Auto-refresh requer recarregar a página manualmente. Clique em 'Get Data' para atualizar.")
