@@ -92,7 +92,11 @@ def fetch_data_from_mongodb(collection: Collection, limit: int = 100) -> pd.Data
 
         if missing_columns:
             logger.error(f"Colunas obrigatórias ausentes: {missing_columns}")
-            st.error(f"Dados incompletos no MongoDB. Colunas ausentes: {', '.join(missing_columns)}")
+            st.error(f"❌ Dados incompletos no MongoDB. Colunas ausentes: {', '.join(missing_columns)}")
+            st.info("💡 **Como resolver:**")
+            st.code("python check_mongodb.py", language="bash")
+            st.info("Para inserir dados de exemplo:")
+            st.code("python populate_sample_data.py", language="bash")
             return pd.DataFrame()
 
         logger.info(f"Dados carregados com sucesso: {len(df)} registros")
@@ -115,6 +119,21 @@ def identify_trade_signals(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: DataFrame com colunas adicionais Buy_Signal e Sell_Signal
     """
     try:
+        # Validação extra: verificar se DataFrame está vazio
+        if df.empty:
+            logger.warning("DataFrame vazio recebido em identify_trade_signals")
+            return df
+
+        # Validação extra: verificar colunas necessárias
+        required_cols = ["close", "Upper", "Lower"]
+        missing = [col for col in required_cols if col not in df.columns]
+
+        if missing:
+            logger.error(f"Colunas ausentes em identify_trade_signals: {missing}")
+            st.error(f"❌ Erro: Colunas obrigatórias ausentes no DataFrame: {', '.join(missing)}")
+            st.error("💡 Execute 'python check_mongodb.py' para diagnosticar o problema")
+            return df
+
         # Sinal de compra: preço de fechamento abaixo ou igual à banda inferior
         df["Buy_Signal"] = df["close"] <= df["Lower"]
 
@@ -124,8 +143,15 @@ def identify_trade_signals(df: pd.DataFrame) -> pd.DataFrame:
         logger.info(f"Sinais identificados - Compra: {df['Buy_Signal'].sum()}, Venda: {df['Sell_Signal'].sum()}")
         return df
 
+    except KeyError as e:
+        logger.error(f"Erro de coluna ausente: {e}")
+        st.error(f"❌ KeyError: A coluna {e} não existe nos dados do MongoDB")
+        st.error("💡 Execute 'python check_mongodb.py' para diagnosticar o problema")
+        st.error("💡 Execute 'python populate_sample_data.py' para inserir dados de exemplo")
+        return df
     except Exception as e:
         logger.error(f"Erro ao identificar sinais de compra/venda: {e}")
+        st.error(f"❌ Erro inesperado: {str(e)}")
         return df
 
 
@@ -273,7 +299,23 @@ if get_data_button or st_autorefresh:
 
         # Verificar se há dados
         if candle_data.empty:
-            st.warning("No data available in MongoDB. Please check your database.")
+            st.warning("⚠️ Nenhum dado disponível no MongoDB")
+            st.info("💡 **Soluções possíveis:**")
+            st.markdown("""
+            1. **Verificar o MongoDB:**
+            ```bash
+            python check_mongodb.py
+            ```
+
+            2. **Popular com dados de exemplo:**
+            ```bash
+            python populate_sample_data.py
+            ```
+
+            3. **Verificar se o MongoDB está rodando:**
+            - Windows: Abra o Gerenciador de Tarefas e procure por "MongoDB"
+            - Linux/Mac: `sudo systemctl status mongod`
+            """)
         else:
             # Identificar sinais de compra/venda
             candle_data_with_signals = identify_trade_signals(candle_data)

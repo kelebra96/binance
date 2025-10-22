@@ -85,6 +85,20 @@ Make sure your MongoDB service is running and accessible at the URI specified in
 mongosh --eval "db.adminCommand('ping')"
 ```
 
+### 6. Populate MongoDB with sample data (Optional)
+
+If you don't have data in MongoDB yet, use the provided script to generate sample data:
+
+```bash
+# Check your MongoDB data structure
+python check_mongodb.py
+
+# Populate with sample data (100 candlesticks with indicators)
+python populate_sample_data.py
+```
+
+This will create realistic cryptocurrency data with Bollinger Bands and Moving Average for testing.
+
 ## Usage
 
 ### Run the application
@@ -111,12 +125,22 @@ The application will open in your default browser at `http://localhost:8501`.
 
 ```
 binance/
-├── main.py              # Main Streamlit application
-├── requirements.txt     # Python dependencies
-├── .env.example        # Example environment variables
-├── .gitignore          # Git ignore rules
-└── README.md           # This file
+├── main.py                    # Main Streamlit application
+├── check_mongodb.py           # MongoDB diagnostic tool
+├── populate_sample_data.py    # Script to insert sample data
+├── requirements.txt           # Python dependencies
+├── .env.example              # Example environment variables
+├── .gitignore                # Git ignore rules
+└── README.md                 # This file
 ```
+
+### Helper Scripts
+
+**check_mongodb.py**
+Diagnostic tool that checks your MongoDB connection and data structure. Use this when troubleshooting data issues.
+
+**populate_sample_data.py**
+Generates and inserts 100 sample candlestick records with Bollinger Bands and Moving Average. Perfect for testing the application.
 
 ## Configuration
 
@@ -152,25 +176,82 @@ The bands widen during high volatility and narrow during low volatility periods.
 
 ## Troubleshooting
 
+### KeyError: 'close' (or other column name)
+
+**Symptom:** Application crashes with `KeyError: 'close'` or similar error.
+
+**Cause:** Your MongoDB data doesn't have the required column structure.
+
+**Solution:**
+```bash
+# Step 1: Diagnose the problem
+python check_mongodb.py
+
+# Step 2: If data is missing or incorrect, populate with sample data
+python populate_sample_data.py
+
+# Step 3: Run the application
+streamlit run main.py
+```
+
 ### MongoDB Connection Error
 
 If you see "Error connecting to MongoDB":
-- Ensure MongoDB is running: `sudo systemctl status mongod`
-- Check the connection URI in `.env`
-- Verify network connectivity and firewall settings
+
+**Windows:**
+```bash
+# Check if MongoDB is running
+tasklist | findstr mongo
+
+# Start MongoDB service
+net start MongoDB
+```
+
+**Linux/Mac:**
+```bash
+# Check MongoDB status
+sudo systemctl status mongod
+
+# Start MongoDB
+sudo systemctl start mongod
+```
+
+- Verify the connection URI in `.env` is correct
+- Check firewall settings
 
 ### No Data Available
 
 If you see "No data available in MongoDB":
-- Check that your MongoDB collection has data
-- Verify the database and collection names in `.env` match your MongoDB setup
-- Ensure the data has the required columns: `open_time`, `open`, `high`, `low`, `close`, `Upper`, `Lower`, `MA20`
+
+1. **Check MongoDB has data:**
+   ```bash
+   python check_mongodb.py
+   ```
+
+2. **Populate with sample data:**
+   ```bash
+   python populate_sample_data.py
+   ```
+
+3. **Verify database/collection names in `.env`:**
+   - `MONGODB_DATABASE=crypto_db`
+   - `MONGODB_COLLECTION=crypto_data`
 
 ### Missing Columns Error
 
-If you see "Dados incompletos no MongoDB":
-- Your MongoDB documents are missing required fields
-- Ensure all documents have: `open_time`, `open`, `high`, `low`, `close`, `Upper`, `Lower`, `MA20`
+If you see "Dados incompletos no MongoDB" or "Colunas ausentes":
+
+**Required columns in MongoDB documents:**
+- `open_time` (string): Timestamp in format "YYYY-MM-DD HH:MM:SS"
+- `open` (number): Opening price
+- `high` (number): Highest price
+- `low` (number): Lowest price
+- `close` (number): Closing price
+- `Upper` (number): Upper Bollinger Band
+- `Lower` (number): Lower Bollinger Band
+- `MA20` (number): 20-period Moving Average
+
+**Solution:** Use `populate_sample_data.py` to create correctly structured data.
 
 ## Dependencies
 
